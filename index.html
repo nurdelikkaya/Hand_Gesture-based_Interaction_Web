@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Gesture Detection</title>
+    <style>
+        /* Optional: Add basic styling */
+        #output_canvas, #webcam {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #webcamButton {
+            position: relative;
+            margin: 20px;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+    <div id="demos" class="invisible">
+        <p>Hand gesture demos will appear here.</p>
+    </div>
+    <button id="webcamButton">ENABLE PREDICTIONS</button>
+    <video id="webcam" autoplay playsinline style="display:none;"></video>
+    <canvas id="output_canvas"></canvas>
+
+    <!-- Link to your JavaScript file -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
