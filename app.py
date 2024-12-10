@@ -20,9 +20,6 @@ gesture_recognizer = vision.GestureRecognizer.create_from_options(gesture_recogn
 # Screen dimensions
 screen_width, screen_height = pyautogui.size()
 
-# Setting the scroll start detected variables as global :")
-up_start_detected = False
-down_start_detected = False
 
 # Distance function
 def distance(x1, y1, x2, y2):
@@ -43,22 +40,34 @@ class GestureReaderApp:
         self.text_frame = tk.Frame(root)
         self.text_frame.pack(padx=20, pady=10, expand=True, fill="both")
 
-        # Scrollable Text Widget
-        self.scrollbar = tk.Scrollbar(self.text_frame, orient="vertical")
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Frame for Text Widget and Scrollbars
+        self.text_frame = tk.Frame(root)
+        self.text_frame.pack(padx=20, pady=10, expand=True, fill="both")
+
+        # Scrollable Text Widget with Vertical and Horizontal Scrollbars
+        self.v_scrollbar = tk.Scrollbar(self.text_frame, orient="vertical")
+        self.v_scrollbar.pack(side=tk.RIGHT, fill="y")
+
+        self.h_scrollbar = tk.Scrollbar(self.text_frame, orient="horizontal")
+        self.h_scrollbar.pack(side=tk.BOTTOM, fill="x")
 
         self.text_area = tk.Text(
             self.text_frame,
-            wrap="word",
+            wrap="none",  # Allow horizontal scrolling
             font=("Arial", self.font_size),
-            yscrollcommand=self.scrollbar.set,
-            width=100,  # Increased width
-            height=10,  # Increased height
+            yscrollcommand=self.v_scrollbar.set,  # Link vertical scrollbar
+            xscrollcommand=self.h_scrollbar.set,  # Link horizontal scrollbar
+            width=100,
+            height=10,
             padx=10,
             pady=10
         )
         self.text_area.pack(side=tk.LEFT, fill="both", expand=True)
-        self.scrollbar.config(command=self.text_area.yview)
+
+        # Configure scrollbars to work with the text widget
+        self.v_scrollbar.config(command=self.text_area.yview)
+        self.h_scrollbar.config(command=self.text_area.xview)
+
 
         # Button Frame
         self.button_frame = tk.Frame(root)
@@ -144,8 +153,6 @@ class GestureReaderApp:
 
     def process_webcam(self):
         """Process gestures and display the camera feed on the canvas."""
-        global up_start_detected, down_start_detected  # Declare global variables
-
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
             print("Error: Webcam not initialized.")
@@ -184,10 +191,6 @@ class GestureReaderApp:
                         if i == 12:  # Middle finger tip
                             middle_x, middle_y = x, y
 
-                    # Calculate distances for open palm detection
-                    index_distance = distance(wrist_x, wrist_y, index_x, index_y)
-                    middle_distance = distance(wrist_x, wrist_y, middle_x, middle_y)
-
                     # Cursor movement with an open palm
                     if gesture == "open_palm":
                         palm_x = (wrist_x + index_x + middle_x) // 3
@@ -195,7 +198,7 @@ class GestureReaderApp:
                         screen_x = int((screen_width / frame_width) * palm_x)
                         screen_y = int((screen_height / frame_height) * palm_y)
                         pyautogui.moveTo(screen_x, screen_y)
-                        cursor_position = (palm_x, palm_y)
+
                         self.current_gesture.set("Cursor Movement")
 
                     # Simulate a click with pinch gesture (index tip close to middle tip)
@@ -207,29 +210,20 @@ class GestureReaderApp:
                     else:
                         self.click_detected = False
                     
-                    if gesture == "scrollUP_start":
-                        up_start_detected = True
-                        self.current_gesture.set("Scroll Up Start")
-
-                    if gesture == "scrollUP_end" and up_start_detected:
+                    if gesture == "scroll_up" :
                         self.text_area.yview_scroll(-3, "units")  # Scroll up 3 units
-                        up_start_detected = False
-                        self.current_gesture.set("Scroll Up End")
+                        self.current_gesture.set("Scroll Up")
 
-                    if gesture == "scrollDOWN_start":
-                        down_start_detected = True
-                        self.current_gesture.set("Scroll Down Start")
-
-                    if gesture == "scrollDOWN_end" and down_start_detected:
+                    if gesture == "scroll_down":
                         self.text_area.yview_scroll(3, "units")  # Scroll down 3 units
-                        down_start_detected = False
-                        self.current_gesture.set("Scroll Down End")
+                        self.current_gesture.set("Scroll Down")
 
-                    if gesture == "scrollRight":
+
+                    if gesture == "scroll_right":
                         self.text_area.xview_scroll(3, "units")  # Scroll right 3 units
                         self.current_gesture.set("Scroll to Right")
 
-                    if gesture == "scrollLeft":
+                    if gesture == "scroll_left":
                         self.text_area.xview_scroll(-3, "units")  # Scroll left 3 units
                         self.current_gesture.set("Scroll to Left")
 
@@ -254,9 +248,12 @@ class GestureReaderApp:
         if self.cap:
             self.cap.release()  # Release the camera resource
         if self.webcam_thread.is_alive():
-            self.webcam_thread.join()  # Wait for the webcam thread to finish
+            print("Stopping webcam thread...")
+            self.webcam_thread.join(timeout=2)  # Wait for the thread to finish
+        print("Closing application...")
         cv2.destroyAllWindows()  # Ensure all OpenCV windows are closed
         self.root.destroy()  # Close the Tkinter window
+
 # Run the App
 if __name__ == "__main__":
     root = tk.Tk()
