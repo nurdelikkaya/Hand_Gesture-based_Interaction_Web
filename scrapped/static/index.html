@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gesture-Controlled UI</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 10px;
+    }
+
+    .grid button {
+      width: 100px;
+      height: 100px;
+      font-size: 16px;
+      border: 2px solid #ccc;
+      background-color: #fff;
+      cursor: pointer;
+    }
+
+    .grid button.selected {
+      background-color: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+
+    video {
+      margin-top: 20px;
+      width: 300px;
+      height: 200px;
+      border: 2px solid #ccc;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Gesture-Controlled UI</h1>
+  <div class="grid">
+    <!-- Buttons will be dynamically generated -->
+  </div>
+  <video id="webcam" autoplay playsinline></video>
+
+  <script>
+    const grid = document.querySelector('.grid');
+    const webcam = document.getElementById('webcam');
+    const apiBaseUrl = 'http://localhost:8000'; // Use relative URL since it's served by the backend
+    const gridSize = 3;
+
+    // Create a 3x3 grid of buttons
+    const buttons = [];
+    for (let i = 0; i < 9; i++) {
+      const button = document.createElement('button');
+      button.textContent = `Button ${i + 1}`;
+      grid.appendChild(button);
+      buttons.push(button);
+    }
+
+    // Highlight the initial button (Button 1)
+    buttons[0].classList.add('selected');
+
+    // Update button selection state
+    async function updateSelectedButton() {
+      try {
+        const response = await fetch(`${apiBaseUrl}/current_button`);
+        const data = await response.json();
+        console.log("Updated button data:", data); // Log the updated button data
+
+        // Clear all selections
+        buttons.forEach((button) => button.classList.remove('selected'));
+
+        // Highlight the selected button
+        const { row, col } = data;
+        const index = row * gridSize + col;
+        if (buttons[index]) {
+          buttons[index].classList.add('selected');
+          console.log(`Button ${index + 1} is now selected`); // Log the highlighted button
+        }
+      } catch (error) {
+        console.error("Error updating button:", error);
+      }
+    }
+
+    // Capture frames from the webcam and send to backend
+    async function sendFrameToBackend(frame) {
+      try {
+        const blob = new Blob([frame], { type: 'image/jpeg' });
+        const formData = new FormData();
+        formData.append('file', blob);
+
+        const response = await fetch(`${apiBaseUrl}/process_frame/`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) {
+          console.error("Error sending frame to backend");
+        }
+      } catch (error) {
+        console.error("Error sending frame to backend:", error);
+      }
+    }
+
+    // Access the webcam
+    const video = document.getElementById('webcam');
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then((stream) => {
+        video.srcObject = stream;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        setInterval(() => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(sendFrameToBackend, 'image/jpeg');
+        }, 2000); // Send frames every second
+
+        // Poll for button updates every second
+        setInterval(updateSelectedButton, 1000);
+      })
+      .catch((error) => console.error('Error accessing webcam:', error));
+  </script>
+</body>
+
+</html>
